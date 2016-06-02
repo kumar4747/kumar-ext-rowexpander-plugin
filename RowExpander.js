@@ -1,0 +1,154 @@
+/**
+ * A plugin that augments the Ext.ux.RowExpander to support clicking the header to expand/collapse all rows.
+ * 
+ * Notes:
+ * 
+ * - Compatible with Ext 5.x
+ * 
+ * Example usage:
+        var grid = Ext.create('Ext.grid.Panel',{
+            plugins: [{
+                ptype: 'dvp_rowexpander',
+                pluginId: 'xpander'
+            }]   
+            ...
+        });
+        
+        grid.getPlugin('xpander').collapseAll();
+
+ * 
+ */
+Ext.define('Ext.ux.grid.plugin.RowExpander', {
+    alias: 'plugin.dvp_rowexpander',
+    extend: 'Ext.grid.plugin.RowExpander',
+    
+    
+    //configurables
+    /**
+     * @cfg {String} collapseAllCls
+     */
+    collapseAllCls: 'rowexpand-collapse-all',
+    /**
+     * @cfg {String} expandAllCls
+     */
+    expandAllCls: 'rowexpand-expand-all',
+    /**
+     * @cfg {String} headerCls
+     */
+    headerCls: 'rowexpand-header',
+    
+    tooltip: 'Expand/collapse all visible rows',
+    
+    //properties
+    
+    //private
+    constructor: function(){
+        var me = this;
+
+        me.callParent(arguments);
+
+        /**
+         * @property toggleAllState
+         * @type {Boolean}
+         * Signifies the state of all rows expanded/collapsed.
+         * False is when all rows are collapsed.
+         */
+        me.toggleAllState = false;
+    },//eof constructor
+    
+    /**
+     * @private
+     * @param {Ext.grid.Panel} grid
+     */
+    init: function(grid) {
+        var me = this,
+            col;
+        
+        me.callParent(arguments);
+        
+        col = grid.headerCt.getComponent(0); //assumes 1st column is the expander
+        col.on('headerclick',me.onHeaderClick,me);
+        col.on('render',me.onHeaderRender,me);
+    }, // eof init
+
+    /**
+     * @private
+     * @return {Object}
+     */
+    getHeaderConfig: function(){
+        var me = this,
+            config = me.callParent(arguments);
+        
+        Ext.apply(config,{
+            cls: (config.cls || '') + ' ' + me.headerCls,
+            tooltip: me.tooltip
+        });
+        return config;
+    },
+    
+    /**
+     * Collapse all rows.
+     */
+    collapseAll: function(){
+        this.toggleAll(false);
+    },
+    
+    /**
+     * Expand all rows.
+     */
+    expandAll: function(){
+        this.toggleAll(true);
+    },
+    
+    /**
+     * @private
+     * @param {Ext.grid.header.Container} header
+     * @param {Ext.grid.column.Column} column
+     * @param {Ext.EventObject} e
+     * @param {HTMLElement} t
+     */
+    onHeaderClick: function(ct,col){
+        var me = this,
+            el = col.textEl;
+        
+        if (me.toggleAllState){
+            me.collapseAll();
+            el.replaceCls(me.collapseAllCls,me.expandAllCls);
+        } else {
+            me.expandAll();
+            el.replaceCls(me.expandAllCls,me.collapseAllCls);
+        }
+        me.toggleAllState = !me.toggleAllState;
+    }, //eof onHeaderClick
+    
+    /**
+     * @private
+     * @param {Ext.grid.column.Column} column
+     */
+    onHeaderRender: function(col){
+        col.textEl.addCls(this.expandAllCls);
+    },
+    
+    /**
+     * @private
+     * @param {Boolean} expand True to indicate that all rows should be expanded; false to collapse all.
+     */
+    toggleAll: function(expand){
+        var me = this,
+            ds = me.getCmp().getStore(),
+            records = ds.getRange(),
+            l = records.length,
+            i,
+            record;
+
+        for (i = 0; i < l; i++){ //faster than store.each()
+            record = records[i];
+            if (me.recordsExpanded[record.internalId] !== expand){
+                me.toggleRow(i,record);
+            }
+        }
+    }
+    
+});//eo class
+
+//end of file
